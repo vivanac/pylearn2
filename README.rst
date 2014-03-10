@@ -60,4 +60,4 @@ work we encourage you to cite this article:
 
 vivanac's notes:
 ----------------
-Forked pylearn2 repository with support for DBN with GRBM. Whole process of loading data, pretraining DBN with GRBM and finetuning with MLP. GRBM is using original energy function from paper (?) and RBM is using cross entropy for reconstruction error. CSV dataset was modified for custom purposes and use new preprocessing classes. Thanks for original authors and repository lisa-lab/pylearn2.  
+Forked pylearn2 repository with support for DBN with GRBM. Whole process of loading data, pretraining DBN with GRBM and finetuning with MLP. GRBM is using original energy function from paper (http://lib.tkk.fi/Dipl/2011/urn100427.pdf) and RBM is using cross entropy for reconstruction error. CSV dataset was modified for custom purposes and use new preprocessing classes. Thanks for original authors and repository lisa-lab/pylearn2.  
