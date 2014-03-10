@@ -574,6 +574,100 @@ class Standardize(ExamplewisePreprocessor):
         return ExamplewiseAddScaleTransform(add=-self._mean,
                                             multiply=self._std ** -1)
 
+class ScaleAll(Preprocessor):
+    """Scale per feature to custom range in X and Y."""
+    def __init__(self, min_range=-1, max_range= 1, min_X=None,
+                max_X=None, min_y=None, max_y=None):
+        
+        self.min_range = min_range
+        self.max_range = max_range
+        self.min_X = min_X
+        self.max_X = max_X
+        self.min_y = min_y
+        self.max_y = max_y
+
+    def apply(self, dataset, can_fit=False):
+        X = dataset.X
+        y = dataset.y
+        if can_fit:
+            if(self.min_X == None):
+                self.min_X = X.min(axis=0)
+            if(self.max_X == None):
+                self.max_X = X.max(axis=0)
+            if(self.min_y == None):
+                self.min_y = y.min(axis=0)
+            if(self.max_y == None):
+                self.max_y = y.max(axis=0)
+            print 'min_X:{} max_X:{}'.format(self.min_X, self.max_X)
+            print 'min_y:{} max_y:{}'.format(self.min_y, self.max_y)
+        else:
+            raise ValueError("can_fit is False")
+
+        new_X = (X - self.min_X)
+        new_X = new_X / (self.max_X - self.min_X)
+        new_X = new_X * (self.max_range - self.min_range)
+        new_X = new_X + self.min_range
+        dataset.X = new_X
+
+        new_y = (y - self.min_y)
+        #print 'new_y1:{}'.format(new_y[0:10])
+        new_y = new_y / (self.max_y - self.min_y)
+        #print 'new_y2:{}'.format(new_y[0:10])
+        new_y = new_y * (self.max_range - self.min_range)
+        #print 'new_y3:{}'.format(new_y[0:10])
+        new_y = new_y + self.min_range
+        #print 'new_y4:{}'.format(new_y[0:10])
+        dataset.y = new_y
+
+class StandardizeAll(Preprocessor):
+    """Subtracts the mean and divides by the standard deviation in X and Y."""
+    def __init__(self, global_mean=False, global_std=False, std_eps=1e-4):
+        """
+        Initialize a Standardize preprocessor.
+
+        Parameters
+        ----------
+        global_mean : bool
+            If `True`, subtract the (scalar) mean over every element
+            in the design matrix. If `False`, subtract the mean from
+            each column (feature) separately. Default is `False`.
+        global_std : bool
+            If `True`, after centering, divide by the (scalar) standard
+            deviation of every element in the design matrix. If `False`,
+            divide by the column-wise (per-feature) standard deviation.
+            Default is `False`.
+        std_eps : float
+            Stabilization factor added to the standard deviations before
+            dividing, to prevent standard deviations very close to zero
+            from causing the feature values to blow up too much.
+            Default is `1e-4`.
+        """
+        self._global_mean = global_mean
+        self._global_std = global_std
+        self._std_eps = std_eps
+        self._mean_X = None
+        self._std_X = None
+        self._mean_y = None
+        self._std_y = None
+
+    def apply(self, dataset, can_fit=False):
+        X = dataset.X
+        y = dataset.y
+        if can_fit:
+            self._mean_X = X.mean() if self._global_mean else X.mean(axis=0)
+            self._std_X = X.std() if self._global_std else X.std(axis=0)
+            self._mean_y = y.mean() if self._global_mean else y.mean(axis=0)
+            self._std_y= y.std() if self._global_std else y.std(axis=0)
+            print 'mean_y:{} std_y:{}'.format(self._std_y, self._mean_y)
+        else:
+            if self._mean_X is None or self._std_X is None:
+                raise ValueError("can_fit is False, but Standardize object "
+                                 "has no stored mean or standard deviation")
+        new_X = (X - self._mean_X) / (self._std_eps + self._std_X)
+        dataset.X = new_X
+
+        new_y = (y - self._mean_y) / (self._std_eps + self._std_y)
+        dataset.y = new_y
 
 class ColumnSubsetBlock(Block):
     def __init__(self, columns, total):

@@ -849,7 +849,17 @@ class RBM(Block, Model):
         of the visible units is done, to reduce noise in the estimate.
         """
         sample, _locals = self.gibbs_step_for_v(v, rng)
-        return ((_locals['v_mean'] - v) ** 2).sum(axis=1).mean()
+
+        cross_entropy = T.mean(
+            T.sum(v * T.log(_locals['v_mean']) +
+            (1 - v) * T.log(1 - _locals['v_mean']),
+            axis=1))
+
+        #return ((_locals['v_mean'] - v) ** 2).sum(axis=1).mean()
+        return cross_entropy
+
+
+
 
 
 class GaussianBinaryRBM(RBM):
@@ -1052,6 +1062,37 @@ class GaussianBinaryRBM(RBM):
             zero_mean = rng.normal(size=shape) * self.sigma
             return zero_mean + v_mean
 
+    def reconstruction_error(self, v, rng):
+        """
+        Compute the mean-squared error (mean over examples, sum over units)
+        across a minibatch after a Gibbs step starting from the training data.
+
+        Parameters
+        ----------
+        v : tensor_like
+            Theano symbolic representing the hidden unit states for a batch \
+            of training examples, with the first dimension indexing training \
+            examples and the second indexing data dimensions.
+        rng : RandomStreams object
+            Random number generator to use for sampling the hidden and \
+            visible units.
+
+        Returns
+        -------
+        mse : tensor_like
+            0-dimensional tensor (essentially a scalar) indicating the mean \
+            reconstruction error across the minibatch.
+
+        Notes
+        -----
+        The reconstruction used to assess error samples only the hidden
+        units. For the visible units, it uses the conditional mean. No sampling
+        of the visible units is done, to reduce noise in the estimate.
+        """
+        print 're:v name{}'.format(v.name)
+        sample, _locals = self.gibbs_step_for_v(v, rng)        
+
+        return ((_locals['v_mean'] - v) ** 2).sum(axis=1).mean()
 
 class mu_pooled_ssRBM(RBM):
     """

@@ -57,3 +57,7 @@ work we encourage you to cite this article:
   <http://arxiv.org/abs/1308.4214>`_.
   *arXiv preprint arXiv:1308.4214* (`BibTeX
   <http://www.iro.umontreal.ca/~lisa/publications2/index.php/export/publication/594/bibtex>`_)
+
+vivanac's notes:
+----------------
+Forked pylearn2 repository with support for DBN with GRBM. Whole process of loading data, pretraining DBN with GRBM and finetuning with MLP. GRBM is using original energy function from paper (?) and RBM is using cross entropy for reconstruction error. CSV dataset was modified for custom purposes and use new preprocessing classes. Thanks for original authors and repository lisa-lab/pylearn2.  

@@ -166,6 +166,28 @@ class SM(DefaultDataSpecsMixin, Cost):
 
         return rval
 
+class RBM_Cost(DefaultDataSpecsMixin,Cost):
+    
+    def expr(self, model, data):
+        """
+        .. todo::
+
+            WRITEME
+        """
+
+        rng = RandomStreams(42) 
+
+        space, source = self.get_data_specs(model)
+        space.validate(data)
+               
+        V = data
+        V_name = 'V' if V.name is None else V.name
+        
+        pos_v = V
+        neg_v, _locals = model.gibbs_step_for_v(V, rng)
+        
+        return T.mean(model.free_energy_given_v(pos_v)) - T.mean(model.free_energy_given_v(neg_v))
+
 
 class SMD(DefaultDataSpecsMixin, Cost):
     """

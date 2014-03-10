@@ -229,6 +229,128 @@ class GRBM_Type_1(GRBM_EnergyFunction):
 
         return rval
 
+class GRBM_Original(GRBM_EnergyFunction):
+    def __init__(self, transformer, bias_hid, bias_vis, sigma):
+        """
+        http://lib.tkk.fi/Dipl/2011/urn100427.pdf
+        Improved Learning Algorithms for Restricted Boltzmann Machines
+        (see ch 5.2.1)
+        
+        But it can be easily modified to other energy energy_functions
+        Parallel Tempering is not implemented
+        """
+        super(GRBM_Original,self).__init__()
+
+        self.transformer = transformer
+        self.bias_hid = bias_hid
+        self.bias_vis = bias_vis
+        self.sigma = sigma
+
+    @classmethod
+    def supports_vector_sigma(cls):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        return False
+
+    def energy(self, varlist):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        print 'grbm energy varlist: {}'.format(varlist)
+        V, H = varlist
+        return  0.5 * (T.sqr(V - self.bias_vis) / T.sqr(self.sigma)).sum(axis=1) - \
+                (self.transformer.lmul(V / T.sqr(self.sigma)) * H).sum(axis=1) - \
+                T.dot(H, self.bias_hid)
+
+    def mean_H_given_V(self, V):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        V_name = 'V'
+        if hasattr(V, 'name') and V.name is not None:
+            V_name = V.name
+
+        rval =  T.nnet.sigmoid( \
+                    self.bias_hid + self.transformer.lmul(V / T.sqr(self.sigma)) \
+                )
+
+        rval.name = 'mean_H_given_V( %s )' % V_name
+
+        return rval
+
+    def reconstruct(self, V):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        H = self.mean_H_given_V(V)
+        R = self.mean_V_given_H(H)
+        return R
+
+    def mean_V_given_H(self, H):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        H_name = 'H'
+        if hasattr(H,'name') and H.name is not None:
+            H_name = H.name
+
+        transpose = self.transformer.lmul_T(H)
+        transpose.name = 'transpose'
+
+        rval =  self.bias_vis + transpose
+        rval.name = 'mean_V_given_H(%s)' % H_name
+
+        return rval
+
+    def free_energy(self, V):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        V_name = 'V' if V.name is None else V.name
+
+        assert V.ndim == 2
+
+        squared_term = 0.5 * (T.sqr(V - self.bias_vis) / T.sqr(self.sigma)).sum(axis=1)
+        squared_term.name = "squared_term"
+        assert len(squared_term.type.broadcastable) == 1
+
+        softplus_term =  T.nnet.softplus(self.transformer.lmul(V / T.sqr(self.sigma))+self.bias_hid).sum(axis=1)
+        assert len(softplus_term.type.broadcastable) == 1
+        softplus_term.name = 'softplus_term'
+
+        return squared_term - softplus_term
+
+    def score(self, V):
+        """
+        .. todo::
+
+            WRITEME
+        """
+        #score(v) = ( v - bias_vis - sigmoid( beta v^T W + bias_hid ) W^T )/sigma^2
+        print 'grbm_v name: {}'.format(V.name)
+        #raw_input('Press any key to continue')
+
+        rval =  -( V - self.reconstruct(V)) / T.sqr(self.sigma)
+        rval.name = 'score'
+
+        return rval
+
+def grbm_original():
+    return GRBM_Original
+
 def grbm_type_1():
     """
     .. todo::

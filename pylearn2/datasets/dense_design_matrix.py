@@ -629,6 +629,9 @@ class DenseDesignMatrix(Dataset):
         """
         preprocessor.apply(self, can_fit)
 
+    def get_preprocessor(self):
+        return self.preprocessor
+
     def get_topological_view(self, mat=None):
         """
         Convert an array (or the entire dataset) to a topological view.
