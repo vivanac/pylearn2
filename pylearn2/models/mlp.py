@@ -37,6 +37,10 @@ from pylearn2.utils import safe_zip
 from pylearn2.utils import sharedX
 from pylearn2.utils import wraps
 
+# Only to be used by the deprecation warning wrapper functions
+from pylearn2.costs.mlp import L1WeightDecay as _L1WD
+from pylearn2.costs.mlp import WeightDecay as _WD
+
 warnings.warn("MLP changing the recursion limit.")
 # We need this to be high enough that the big theano graphs we make
 # when doing max pooling via subtensors don't cause python to complain.
@@ -330,28 +334,26 @@ class MLP(Layer):
 
     Note that it's possible for an entire MLP to be a single layer of a larger
     MLP.
+
+    Parameters
+    ----------
+    layers : list
+        A list of Layer objects. The final layer specifies the output space
+        of this MLP.
+    batch_size : int, optional
+        If not specified then must be a positive integer. Mostly useful if
+        one of your layers involves a Theano op like convolution that
+        requires a hard-coded batch size.
+    nvis : int, optional
+        Number of "visible units" (input units). Equivalent to specifying
+        `input_space=VectorSpace(dim=nvis)`.
+    input_space : Space object, optional
+        A Space specifying the kind of input the MLP accepts. If None,
+        input space is specified by nvis.
     """
 
     def __init__(self, layers, batch_size=None, input_space=None,
                  nvis=None, seed=None):
-        """
-        Parameters
-        ----------
-        layers : list
-            A list of Layer objects. The final layer specifies the output space
-            of this MLP.
-        batch_size : int, optional
-            If not specified then must be a positive integer. Mostly useful if
-            one of your layers involves a Theano op like convolution that
-            requires a hard-coded batch size.
-        nvis : int, optional
-            Number of "visible units" (input units). Equivalent to specifying
-            `input_space=VectorSpace(dim=nvis)`.
-        input_space : Space object, optional
-            A Space specifying the kind of input the MLP accepts. If None,
-            input space is specified by nvis.
-        """
-
         super(MLP, self).__init__()
 
         if seed is None:
@@ -911,7 +913,21 @@ class Softmax(Layer):
     """
     .. todo::
 
-        WRITEME
+        WRITEME (including parameters list)
+
+    Parameters
+    ----------
+    n_classes : WRITEME
+    layer_name : WRITEME
+    irange : WRITEME
+    istdev : WRITEME
+    sparse_init : WRITEME
+    W_lr_scale : WRITEME
+    b_lr_scale : WRITEME
+    max_row_norm : WRITEME
+    no_affine : WRITEME
+    max_col_norm : WRITEME
+    init_bias_target_marginals : WRITEME
     """
     def __init__(self, n_classes, layer_name, irange=None,
                  istdev=None,
@@ -919,11 +935,6 @@ class Softmax(Layer):
                  b_lr_scale=None, max_row_norm=None,
                  no_affine=False,
                  max_col_norm=None, init_bias_target_marginals=None):
-        """
-        .. todo::
-
-            WRITEME
-        """
 
         super(Softmax, self).__init__()
 
@@ -1223,6 +1234,24 @@ class SoftmaxPool(Layer):
     A hidden layer that uses the softmax function to do max pooling over groups
     of units. When the pooling size is 1, this reduces to a standard sigmoidal
     MLP layer.
+
+    Parameters
+    ----------
+    detector_layer_dim : WRITEME
+    layer_name : WRITEME
+    pool_size : WRITEME
+    irange : WRITEME
+    sparse_init : WRITEME
+    sparse_stdev : WRITEME
+    include_prob : float
+        Probability of including a weight element in the set of weights \
+        initialized to U(-irange, irange). If not included it is \
+        initialized to 0.
+    init_bias : WRITEME
+    W_lr_scale : WRITEME
+    b_lr_scale : WRITEME
+    mask_weights : WRITEME
+    max_col_norm : WRITEME
     """
 
     def __init__(self,
@@ -1238,25 +1267,6 @@ class SoftmaxPool(Layer):
                  b_lr_scale=None,
                  mask_weights=None,
                  max_col_norm=None):
-        """
-        Parameters
-        ----------
-        detector_layer_dim : WRITEME
-        layer_name : WRITEME
-        pool_size : WRITEME
-        irange : WRITEME
-        sparse_init : WRITEME
-        sparse_stdev : WRITEME
-        include_prob : float
-            Probability of including a weight element in the set of weights \
-            initialized to U(-irange, irange). If not included it is \
-            initialized to 0.
-        init_bias : WRITEME
-        W_lr_scale : WRITEME
-        b_lr_scale : WRITEME
-        mask_weights : WRITEME
-        max_col_norm : WRITEME
-        """
         super(SoftmaxPool, self).__init__()
         self.__dict__.update(locals())
         del self.self
@@ -1569,6 +1579,55 @@ class Linear(Layer):
     gets a RectifiedLinear layer with a factored weight matrix, which can
     reduce the number of parameters in the model (by making the effective
     weight matrix low rank).
+
+    Parameters
+    ----------
+    dim : int
+        The number of elements in the output of the layer.
+    layer_name : str
+        The name of the layer. All layers in an MLP must have a unique name.
+    irange : WRITEME
+    istdev : WRITEME
+    sparse_init : WRITEME
+    sparse_stdev : WRITEME
+    include_prob : float
+        Probability of including a weight element in the set of weights \
+        initialized to U(-irange, irange). If not included it is \
+        initialized to 0.
+    init_bias : float or ndarray
+        Anything that can be broadcasted to a numpy vector.
+        Provides the initial value of the biases of the model.
+        When using this class as an output layer (specifically the Linear
+        class, or subclasses that don't change the output like
+        LinearGaussian, but not subclasses that change the output, like
+        Softmax) it can be a good idea to set this to the return value of
+        the `mean_of_targets` function. This provides the mean value of
+        all the targets in the training set, so the model is initialized
+        to a dummy model that predicts the expected value of each output
+        variable.
+    W_lr_scale : float
+        Multiply the learning rate on the weights by this constant.
+    b_lr_scale : float
+        Multiply the learning rate on the biases by this constant.
+    mask_weights : ndarray, optional
+        If provided, the weights will be multiplied by this mask after each
+        learning update.
+    max_row_norm : WRITEME
+    max_col_norm : WRITEME
+    min_col_norm : WRITEME
+    softmax_columns : DEPRECATED
+    copy_input : REMOVED
+    use_abs_loss : bool
+        If True, the cost function will be mean absolute error rather
+        than mean squared error.
+        You can think of mean squared error as fitting a Gaussian
+        distribution with variance 1, or as learning to predict the mean
+        of the data.
+        You can think of mean absolute error as fitting a Laplace
+        distribution with variance 1, or as learning to predict the
+        median of the data.
+    use_bias : bool
+        If False, does not add the bias term to the output.
     """
     def __init__(self,
                  dim,
@@ -1586,59 +1645,13 @@ class Linear(Layer):
                  max_col_norm=None,
                  min_col_norm=None,
                  softmax_columns=None,
-                 copy_input=0,
+                 copy_input=None,
                  use_abs_loss=False,
                  use_bias=True):
-        """
-        Parameters
-        ----------
-        dim : int
-            The number of elements in the output of the layer.
-        layer_name : str
-            The name of the layer. All layers in an MLP must have a unique name.
-        irange : WRITEME
-        istdev : WRITEME
-        sparse_init : WRITEME
-        sparse_stdev : WRITEME
-        include_prob : float
-            Probability of including a weight element in the set of weights \
-            initialized to U(-irange, irange). If not included it is \
-            initialized to 0.
-        init_bias : float or ndarray
-            Anything that can be broadcasted to a numpy vector.
-            Provides the initial value of the biases of the model.
-            When using this class as an output layer (specifically the Linear
-            class, or subclasses that don't change the output like
-            LinearGaussian, but not subclasses that change the output, like
-            Softmax) it can be a good idea to set this to the return value of
-            the `mean_of_targets` function. This provides the mean value of
-            all the targets in the training set, so the model is initialized
-            to a dummy model that predicts the expected value of each output
-            variable.
-        W_lr_scale : float
-            Multiply the learning rate on the weights by this constant.
-        b_lr_scale : float
-            Multiply the learning rate on the biases by this constant.
-        mask_weights : ndarray, optional
-            If provided, the weights will be multiplied by this mask after each
-            learning update.
-        max_row_norm : WRITEME
-        max_col_norm : WRITEME
-        min_col_norm : WRITEME
-        softmax_columns : DEPRECATED
-        copy_input : WRITEME
-        use_abs_loss : bool
-            If True, the cost function will be mean absolute error rather
-            than mean squared error.
-            You can think of mean squared error as fitting a Gaussian
-            distribution with variance 1, or as learning to predict the mean
-            of the data.
-            You can think of mean absolute error as fitting a Laplace
-            distribution with variance 1, or as learning to predict the
-            median of the data.
-        use_bias : bool
-            If False, does not add the bias term to the output.
-        """
+
+        if copy_input is not None:
+            raise AssertionError("The copy_input option had a bug and has "
+                    "been removed from the library.")
 
         super(Linear, self).__init__()
 
@@ -1694,8 +1707,7 @@ class Linear(Layer):
             self.input_dim = space.get_total_dimension()
             self.desired_space = VectorSpace(self.input_dim)
 
-        self.output_space = VectorSpace(self.dim +
-                                        self.copy_input * self.input_dim)
+        self.output_space = VectorSpace(self.dim)
 
         rng = self.mlp.rng
         if self.irange is not None:
@@ -1956,9 +1968,6 @@ class Linear(Layer):
         if self.layer_name is not None:
             z.name = self.layer_name + '_z'
 
-        if self.copy_input:
-            z = T.concatenate((z, state_below), axis=1)
-
         return z
 
     @wraps(Layer.fprop)
@@ -2008,34 +2017,34 @@ class Sigmoid(Linear):
     """
     A layer that performs an affine transformation of its (vectorial)
     input followed by a logistic sigmoid elementwise nonlinearity.
+
+    .. todo::
+
+        WRITEME properly
+
+    Parameters
+    ----------
+    monitor_style: string
+        Values can be either 'detection' or 'classification'.
+        'detection' is the default.
+
+        - 'detection' : get_monitor_from_state makes no assumptions about
+            target, reports info about how good model is at
+            detecting positive bits.
+            This will monitor precision, recall, and F1 score
+            based on a detection threshold of 0.5. Note that
+            these quantities are computed *per-minibatch* and
+            averaged together. Unless your entire monitoring
+            dataset fits in one minibatch, this is not the same
+            as the true F1 score, etc., and will usually
+            seriously overestimate your performance.
+        - 'classification' : get_monitor_from_state assumes target is one-hot
+            class indicator, even though you're training the
+            model as k independent sigmoids. gives info on how
+            good the argmax is as a classifier
     """
 
     def __init__(self, monitor_style='detection', **kwargs):
-        """
-        .. todo::
-
-            WRITEME properly
-
-        monitor_style: a string, either 'detection' or 'classification'
-                       'detection' by default
-
-                       if 'detection':
-                           get_monitor_from_state makes no assumptions about
-                           target, reports info about how good model is at
-                           detecting positive bits.
-                           This will monitor precision, recall, and F1 score
-                           based on a detection threshold of 0.5. Note that
-                           these quantities are computed *per-minibatch* and
-                           averaged together. Unless your entire monitoring
-                           dataset fits in one minibatch, this is not the same
-                           as the true F1 score, etc., and will usually
-                           seriously overestimate your performance.
-                        if 'classification':
-                            get_monitor_from_state assumes target is one-hot
-                            class indicator, even though you're training the
-                            model as k independent sigmoids. gives info on how
-                            good the argmax is as a classifier
-        """
         super(Sigmoid, self).__init__(**kwargs)
         assert monitor_style in ['classification', 'detection']
         self.monitor_style = monitor_style
@@ -2187,14 +2196,11 @@ class Sigmoid(Linear):
 class RectifiedLinear(Linear):
     """
     Rectified linear MLP layer (Glorot and Bengio 2011).
+
+    WRITEME parameters list
     """
 
     def __init__(self, left_slope=0.0, **kwargs):
-        """
-        .. todo::
-
-            WRITEME
-        """
         super(RectifiedLinear, self).__init__(**kwargs)
         self.left_slope = left_slope
 
@@ -2213,14 +2219,11 @@ class RectifiedLinear(Linear):
 
 class Softplus(Linear):
     """
-    Softplus MLP layer
+    An MLP layer using the softplus nonlinearity
+    h = log(1 + exp(Wx + b))
     """
 
     def __init__(self, **kwargs):
-        """
-        Initializes an MLP layer using the softplus nonlinearity
-        h = log(1 + exp(Wx + b))
-        """
         super(Softplus, self).__init__(**kwargs)
 
     @wraps(Layer.fprop)
@@ -2244,11 +2247,6 @@ class SpaceConverter(Layer):
     """
 
     def __init__(self, layer_name, output_space):
-        """
-        .. todo::
-
-            WRITEME
-        """
         super(SpaceConverter, self).__init__()
         self.__dict__.update(locals())
         del self.self
@@ -2267,9 +2265,71 @@ class SpaceConverter(Layer):
 
 class ConvRectifiedLinear(Layer):
     """
-    .. todo::
+    A convolutional rectified linear layer, based on theano's B01C formatted
+    convolution.
 
-        WRITEME
+    Parameters
+    ----------
+    output_channels : int
+        The number of output channels the layer should have.
+    kernel_shape : tuple
+        The shape of the convolution kernel.
+    pool_shape : tuple
+        The shape of the spatial max pooling. A two-tuple of ints.
+    pool_stride : tuple
+        The stride of the spatial max pooling. Also must be square.
+    layer_name : str
+        A name for this layer that will be prepended to monitoring channels
+        related to this layer.
+    irange : float
+        if specified, initializes each weight randomly in
+        U(-irange, irange)
+    border_mode : str
+        A string indicating the size of the output:
+
+        - "full" : The output is the full discrete linear convolution of the
+            inputs.
+        - "valid" : The output consists only of those elements that do not
+            rely on the zero-padding. (Default)
+
+    include_prob : float
+        probability of including a weight element in the set of weights
+        initialized to U(-irange, irange). If not included it is initialized
+        to 0.
+    init_bias : float
+        All biases are initialized to this number
+    W_lr_scale: float
+        The learning rate on the weights for this layer is multiplied by this
+        scaling factor
+    b_lr_scale : float
+        The learning rate on the biases for this layer is multiplied by this
+        scaling factor
+    left_slope: float
+        The slope of the left half of the activation function
+    max_kernel_norm : float
+        If specifed, each kernel is constrained to have at most this norm.
+    pool_type : WRITEME
+        The type of the pooling operation performed the the convolution.
+        Default pooling type is max-pooling. WRITEME
+    tied_b : bool
+        If true, all biases in the same channel are constrained to be the
+        same as each other. Otherwise, each bias at each location is
+        learned independently.
+    detector_normalization : callable
+        See `output_normalization`
+    output_normalization : callable
+        if specified, should be a callable object. the state of the
+        network is optionally replaced with normalization(state) at each
+        of the 3 points in processing:
+
+        - detector: the maxout units can be normalized prior to the
+            spatial pooling
+        - output: the output of the layer, after sptial pooling, can
+            be normalized as well
+
+        WRITEME: is there input_normalization for thiss class?
+    kernel_stride: The stride of the convolution kernel. A two-tuple of
+        ints.
     """
     def __init__(self,
                  output_channels,
@@ -2287,53 +2347,10 @@ class ConvRectifiedLinear(Layer):
                  left_slope=0.0,
                  max_kernel_norm=None,
                  pool_type='max',
+                 tied_b=False,
                  detector_normalization=None,
                  output_normalization=None,
                  kernel_stride=(1, 1)):
-        """
-        .. todo::
-
-            WRITEME properly
-
-         output_channels: The number of output channels the layer should have.
-         kernel_shape: The shape of the convolution kernel.
-         pool_shape: The shape of the spatial max pooling. A two-tuple of ints.
-         pool_stride: The stride of the spatial max pooling. Also must be
-                      square.
-         layer_name: A name for this layer that will be prepended to
-                     monitoring channels related to this layer.
-         irange: if specified, initializes each weight randomly in
-                 U(-irange, irange)
-         border_mode: A string indicating the size of the output:
-            full - The output is the full discrete linear convolution of the
-                   inputs.
-            valid - The output consists only of those elements that do not rely
-                    on the zero-padding.(Default)
-         include_prob: probability of including a weight element in the set
-                       of weights initialized to U(-irange, irange). If not
-                       included it is initialized to 0.
-         init_bias: All biases are initialized to this number
-         W_lr_scale: The learning rate on the weights for this layer is
-                     multiplied by this scaling factor
-         b_lr_scale: The learning rate on the biases for this layer is
-                     multiplied by this scaling factor
-         left_slope: **TODO**
-         max_kernel_norm: If specifed, each kernel is constrained to have at
-                          most this norm.
-         pool_type: The type of the pooling operation performed the the
-                    convolution. Default pooling type is max-pooling.
-         detector_normalization, output_normalization:
-              if specified, should be a callable object. the state of the
-              network is optionally replaced with normalization(state) at each
-              of the 3 points in processing:
-                  detector: the maxout units can be normalized prior to the
-                            spatial pooling
-                  output: the output of the layer, after sptial pooling, can
-                          be normalized as well
-         kernel_stride: The stride of the convolution kernel. A two-tuple of
-                        ints.
-        """
-
         super(ConvRectifiedLinear, self).__init__()
 
         if (irange is None) and (sparse_init is None):
@@ -2420,7 +2437,11 @@ class ConvRectifiedLinear(Layer):
         W, = self.transformer.get_params()
         W.name = 'W'
 
-        self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
+        if self.tied_b:
+            self.b = sharedX(np.zeros((self.detector_space.num_channels)) +
+                             self.init_bias)
+        else:
+            self.b = sharedX(self.detector_space.get_origin() + self.init_bias)
         self.b.name = 'b'
 
         print 'Input shape: ', self.input_space.shape
@@ -2552,7 +2573,16 @@ class ConvRectifiedLinear(Layer):
 
         self.input_space.validate(state_below)
 
-        z = self.transformer.lmul(state_below) + self.b
+        z = self.transformer.lmul(state_below)
+        if not hasattr(self, 'tied_b'):
+            self.tied_b = False
+        if self.tied_b:
+            b = self.b.dimshuffle('x', 0, 'x', 'x')
+        else:
+            b = self.b.dimshuffle('x', 0, 1, 2)
+
+        z = z + b
+
         if self.layer_name is not None:
             z.name = self.layer_name + '_z'
 
@@ -2588,20 +2618,46 @@ class ConvRectifiedLinear(Layer):
 
         return p
 
+    @wraps(Layer.cost)
+    def cost(self, Y, Y_hat):
+        return self.cost_from_cost_matrix(self.cost_matrix(Y, Y_hat))
+
+    @wraps(Layer.cost_from_cost_matrix)
+    def cost_from_cost_matrix(self, cost_matrix):
+        return cost_matrix.sum(axis=(1,2,3)).mean()
+
+    @wraps(Layer.cost_matrix)
+    def cost_matrix(self, Y, Y_hat):
+        return T.sqr(Y - Y_hat)
+
 
 def max_pool(bc01, pool_shape, pool_stride, image_shape):
     """
-    .. todo::
-
-        WRITEME properly
-
     Theano's max pooling op only support pool_stride = pool_shape
     so here we have a graph that does max pooling with strides
 
-    bc01: minibatch in format (batch size, channels, rows, cols)
-    pool_shape: shape of the pool region (rows, cols)
-    pool_stride: strides between pooling regions (row stride, col stride)
-    image_shape: avoid doing some of the arithmetic in theano
+    Parameters
+    ----------
+    bc01 : theano tensor
+        minibatch in format (batch size, channels, rows, cols)
+    pool_shape : tuple
+        shape of the pool region (rows, cols)
+    pool_stride : tuple
+        strides between pooling regions (row stride, col stride)
+    image_shape : tuple
+        avoid doing some of the arithmetic in theano
+
+    Returns
+    -------
+    pooled : theano tensor
+        The output of pooling applied to `bc01`
+
+    See Also
+    --------
+    max_pool_c01b : Same functionality but with ('c', 0, 1, 'b') axes
+    sandbox.cuda_convnet.pool.max_pool_c01b : Same functionality as
+        `max_pool_c01b` but GPU-only and considerably faster.
+    mean_pool : Mean pooling instead of max pooling
     """
     mx = None
     r, c = image_shape
@@ -2675,12 +2731,30 @@ def max_pool(bc01, pool_shape, pool_stride, image_shape):
 
 def max_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
     """
-    .. todo::
+    Theano's max pooling op only support pool_stride = pool_shape
+    so here we have a graph that does max pooling with strides
 
-        WRITEME properly
+    Parameters
+    ----------
+    c01b : theano tensor
+        minibatch in format (channels, rows, cols, batch size)
+    pool_shape : tuple
+        shape of the pool region (rows, cols)
+    pool_stride : tuple
+        strides between pooling regions (row stride, col stride)
+    image_shape : tuple
+        avoid doing some of the arithmetic in theano
 
-    Like max_pool but with input using axes ('c', 0, 1, 'b')
-      (Alex Krizhevsky format)
+    Returns
+    -------
+    pooled : theano tensor
+        The output of pooling applied to `c01b`
+
+    See Also
+    --------
+    sandbox.cuda_convnet.pool.max_pool_c01b : Same functionality but GPU-only
+        and considerably faster.
+    max_pool : Same functionality but with ('b', 0, 1, 'c') axes
     """
     mx = None
     r, c = image_shape
@@ -2755,14 +2829,27 @@ def max_pool_c01b(c01b, pool_shape, pool_stride, image_shape):
 
 def mean_pool(bc01, pool_shape, pool_stride, image_shape):
     """
-    .. todo::
+    Does mean pooling (aka average pooling) via a Theano graph.
 
-        WRITEME properly
+    Parameters
+    ----------
+    bc01 : theano tensor
+        minibatch in format (batch size, channels, rows, cols)
+    pool_shape : tuple
+        shape of the pool region (rows, cols)
+    pool_stride : tuple
+        strides between pooling regions (row stride, col stride)
+    image_shape : tuple
+        avoid doing some of the arithmetic in theano
 
-    bc01: minibatch in format (batch size, channels, rows, cols)
-    pool_shape: shape of the pool region (rows, cols)
-    pool_stride: strides between pooling regions (row stride, col stride)
-    image_shape: avoid doing some of the arithmetic in theano
+    Returns
+    -------
+    pooled : theano tensor
+        The output of pooling applied to `bc01`
+
+    See Also
+    --------
+    max_pool : Same thing but with max pooling
     """
     mx = None
     r, c = image_shape
@@ -2844,28 +2931,18 @@ def mean_pool(bc01, pool_shape, pool_stride, image_shape):
     return mx
 
 
+@wraps(_WD)
 def WeightDecay(*args, **kwargs):
-    """
-    .. todo::
-
-        WRITEME
-    """
     warnings.warn("pylearn2.models.mlp.WeightDecay has moved to "
                   "pylearn2.costs.mlp.WeightDecay")
-    from pylearn2.costs.mlp import WeightDecay as WD
-    return WD(*args, **kwargs)
+    return _WD(*args, **kwargs)
 
 
+@wraps(_L1WD)
 def L1WeightDecay(*args, **kwargs):
-    """
-    .. todo::
-
-        WRITEME
-    """
     warnings.warn("pylearn2.models.mlp.L1WeightDecay has moved to "
                   "pylearn2.costs.mlp.WeightDecay")
-    from pylearn2.costs.mlp import L1WeightDecay as L1WD
-    return L1WD(*args, **kwargs)
+    return _L1WD(*args, **kwargs)
 
 
 class LinearGaussian(Linear):
@@ -2893,38 +2970,37 @@ class LinearGaussian(Linear):
     will reweight the mean squared error so that variables that can be
     estimated easier will receive a higher penalty. This is one way of
     adapting the model better to heterogenous data.
+
+    Parameters
+    ----------
+    init_beta : float or ndarray
+        Any value > 0 that can be broadcasted to a vector of shape (dim, ).
+        The elements of beta are initialized to this value.
+        A good value is often the precision (inverse variance) of the target
+        variables in the training set, as provided by the
+        `beta_from_targets` function. This is the optimal beta for a dummy
+        model that just predicts the mean target value from the training set.
+    min_beta : float
+        The elements of beta are constrained to be >= this value.
+        This value must be > 0., otherwise the output conditional is not
+        constrained to be a valid probability distribution.
+        A good value is often the precision (inverse variance) of the target
+        variables in the training set, as provided by the
+        `beta_from_targets` function. This is the optimal beta for a dummy
+        model that just predicts the mean target value from the training set.
+        A trained model should always be able to obtain at least this much
+        precision, at least on the training set.
+    max_beta : float
+        The elements of beta are constrained to be <= this value.
+        We impose this constraint because for problems
+        where the training set values can be predicted
+        exactly, beta can grow without bound, which also makes the
+        gradients grow without bound, resulting in numerical problems.
+    kwargs : dict
+        Arguments to the `Linear` superclass.
     """
 
     def __init__(self, init_beta, min_beta, max_beta, beta_lr_scale, **kwargs):
-        """
-        Parameters
-        ----------
-        init_beta : float or ndarray
-            Any value > 0 that can be broadcasted to a vector of shape (dim, ).
-            The elements of beta are initialized to this value.
-            A good value is often the precision (inverse variance) of the target
-            variables in the training set, as provided by the
-            `beta_from_targets` function. This is the optimal beta for a dummy
-            model that just predicts the mean target value from the training set.
-        min_beta : float
-            The elements of beta are constrained to be >= this value.
-            This value must be > 0., otherwise the output conditional is not
-            constrained to be a valid probability distribution.
-            A good value is often the precision (inverse variance) of the target
-            variables in the training set, as provided by the
-            `beta_from_targets` function. This is the optimal beta for a dummy
-            model that just predicts the mean target value from the training set.
-            A trained model should always be able to obtain at least this much
-            precision, at least on the training set.
-        max_beta : float
-            The elements of beta are constrained to be <= this value.
-            We impose this constraint because for problems
-            where the training set values can be predicted
-            exactly, beta can grow without bound, which also makes the
-            gradients grow without bound, resulting in numerical problems.
-        kwargs : dict
-            Arguments to the `Linear` superclass.
-        """
         super(LinearGaussian, self).__init__(**kwargs)
         self.__dict__.update(locals())
         del self.self
@@ -2987,6 +3063,8 @@ class LinearGaussian(Linear):
 
 def beta_from_design(design, min_var=1e-6, max_var=1e6):
     """
+    Returns the marginal precision of a design matrix.
+
     Parameters
     ----------
     design : ndarray
@@ -3007,6 +3085,8 @@ def beta_from_design(design, min_var=1e-6, max_var=1e6):
 
 def beta_from_targets(dataset, **kwargs):
     """
+    Returns the marginal precision of the targets in a dataset.
+
     Parameters
     ----------
     dataset : DenseDesignMatrix
@@ -3025,18 +3105,35 @@ def beta_from_targets(dataset, **kwargs):
 
 def beta_from_features(dataset, **kwargs):
     """
-    .. todo::
+    Returns the marginal precision of the features in a dataset.
 
-        WRITEME
+    Parameters
+    ----------
+    dataset : DenseDesignMatrix
+        The dataset to compute the precision on.
+    kwargs : dict
+        Passed through to `beta_from_design`
+
+    Returns
+    -------
+    beta : ndarray
+        Vector of precision values for each feature in `dataset`
     """
     return beta_from_design(dataset.X, **kwargs)
 
 
 def mean_of_targets(dataset):
     """
-    .. todo::
+    Returns the mean of the targets in a dataset.
 
-        WRITEME
+    Parameters
+    ----------
+    dataset : DenseDesignMatrix
+
+    Returns
+    -------
+    mn : ndarray
+        A 1-D vector with entry i giving the mean of target i
     """
     return dataset.y.mean(axis=0)
 
@@ -3045,20 +3142,19 @@ class PretrainedLayer(Layer):
     """
     A layer whose weights are initialized, and optionally fixed,
     based on prior training.
+
+    .. todo::
+
+        WRITEME properly
+
+    layer_content: A Model that implements "upward_pass", such as an
+        RBM or an Autoencoder
+    freeze_params: If True, regard layer_conent's parameters as fixed
+        If False, they become parameters of this layer and can be
+        fine-tuned to optimize the MLP's cost function.
     """
 
     def __init__(self, layer_name, layer_content, freeze_params=False):
-        """
-        .. todo::
-
-            WRITEME properly
-
-        layer_content: A Model that implements "upward_pass", such as an
-            RBM or an Autoencoder
-        freeze_params: If True, regard layer_conent's parameters as fixed
-            If False, they become parameters of this layer and can be
-            fine-tuned to optimize the MLP's cost function.
-        """
         super(PretrainedLayer, self).__init__()
         self.__dict__.update(locals())
         del self.self
@@ -3099,16 +3195,15 @@ class PretrainedLayer(Layer):
 class CompositeLayer(Layer):
     """
     A Layer that runs several simpler layers in parallel.
+
+    .. todo::
+
+        WRITEME properly
+
+    layers: a list or tuple of Layers.
     """
 
     def __init__(self, layer_name, layers):
-        """
-        .. todo::
-
-            WRITEME properly
-
-        layers: a list or tuple of Layers.
-        """
         super(CompositeLayer, self).__init__()
         self.__dict__.update(locals())
         del self.self
@@ -3171,14 +3266,14 @@ class FlattenerLayer(Layer):
 
     See pylearn2.sandbox.tuple_var and the theano-dev e-mail thread
     "TupleType".
+
+    Parameters
+    ----------
+    raw_layer : WRITEME
+        WRITEME
     """
 
     def __init__(self, raw_layer):
-        """
-        .. todo::
-
-            WRITEME
-        """
         super(FlattenerLayer, self).__init__()
         self.__dict__.update(locals())
         del self.self
@@ -3252,25 +3347,25 @@ def generate_dropout_mask(mlp, default_include_prob=0.5,
         An MLP object.
 
     default_include_prob : float, optional
-        The probability of including an input to a hidden \
-        layer, for layers not listed in `input_include_probs`. \
+        The probability of including an input to a hidden
+        layer, for layers not listed in `input_include_probs`.
         Default is 0.5.
 
     input_include_probs : dict, optional
-        A dictionary  mapping layer names to probabilities \
-        of input inclusion for that layer. Default is `None`, \
-        in which `default_include_prob` is used for all \
+        A dictionary  mapping layer names to probabilities
+        of input inclusion for that layer. Default is `None`,
+        in which `default_include_prob` is used for all
         layers.
 
     rng : RandomState object or seed, optional
-        A `numpy.random.RandomState` object or a seed used to \
+        A `numpy.random.RandomState` object or a seed used to
         create one.
 
     Returns
     -------
     mask : int
-        An integer indexing a dropout mask for the network, \
-        drawn with the appropriate probability given the \
+        An integer indexing a dropout mask for the network,
+        drawn with the appropriate probability given the
         inclusion probabilities.
     """
     if input_include_probs is None:
@@ -3307,20 +3402,20 @@ def sampled_dropout_average(mlp, inputs, num_masks,
         An MLP object.
 
     inputs : tensor_like
-        A Theano variable representing a minibatch appropriate \
+        A Theano variable representing a minibatch appropriate
         for fpropping through the MLP.
 
     num_masks : int
         The number of masks to sample.
 
     default_input_include_prob : float, optional
-        The probability of including an input to a hidden \
-        layer, for layers not listed in `input_include_probs`. \
+        The probability of including an input to a hidden
+        layer, for layers not listed in `input_include_probs`.
         Default is 0.5.
 
     input_include_probs : dict, optional
-        A dictionary  mapping layer names to probabilities \
-        of input inclusion for that layer. Default is `None`, \
+        A dictionary  mapping layer names to probabilities
+        of input inclusion for that layer. Default is `None`,
         in which `default_include_prob` is used for all
         layers.
 
@@ -3328,23 +3423,23 @@ def sampled_dropout_average(mlp, inputs, num_masks,
         The amount to scale input in dropped out layers.
 
     input_scales : dict, optional
-        A dictionary  mapping layer names to constants by \
+        A dictionary  mapping layer names to constants by
         which to scale the input.
 
     rng : RandomState object or seed, optional
-        A `numpy.random.RandomState` object or a seed used to \
+        A `numpy.random.RandomState` object or a seed used to
         create one.
 
     per_example : boolean, optional
-        If `True`, generate a different mask for every single \
-        test example, so you have `num_masks` per example \
-        instead of `num_mask` networks total. If `False`, \
+        If `True`, generate a different mask for every single
+        test example, so you have `num_masks` per example
+        instead of `num_mask` networks total. If `False`,
         `num_masks` masks are fixed in the graph.
 
     Returns
     -------
     geo_mean : tensor_like
-        A symbolic graph for the geometric mean prediction of \
+        A symbolic graph for the geometric mean prediction of
         all the networks.
     """
     if input_include_probs is None:
@@ -3390,25 +3485,25 @@ def exhaustive_dropout_average(mlp, inputs, masked_input_layers=None,
         An MLP object.
 
     inputs : tensor_like
-        A Theano variable representing a minibatch appropriate \
+        A Theano variable representing a minibatch appropriate
         for fpropping through the MLP.
 
     masked_input_layers : list, optional
-        A list of layer names whose input should be masked. \
-        Default is all layers (including the first hidden \
+        A list of layer names whose input should be masked.
+        Default is all layers (including the first hidden
         layer, i.e. mask the input).
 
     default_input_scale : float, optional
         The amount to scale input in dropped out layers.
 
     input_scales : dict, optional
-        A dictionary  mapping layer names to constants by \
+        A dictionary  mapping layer names to constants by
         which to scale the input.
 
     Returns
     -------
     geo_mean : tensor_like
-        A symbolic graph for the geometric mean prediction \
+        A symbolic graph for the geometric mean prediction
         of all exponentially many masked subnetworks.
 
     Notes
@@ -3445,14 +3540,14 @@ def geometric_mean_prediction(forward_props):
     Parameters
     ----------
     forward_props : list
-        A list of Theano graphs corresponding to forward \
-        propagations through the network with different \
+        A list of Theano graphs corresponding to forward
+        propagations through the network with different
         dropout masks.
 
     Returns
     -------
     geo_mean : tensor_like
-        A symbolic graph for the geometric mean prediction \
+        A symbolic graph for the geometric mean prediction
         of all exponentially many masked subnetworks.
 
     Notes

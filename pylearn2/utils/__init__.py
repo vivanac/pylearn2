@@ -141,15 +141,14 @@ class CallbackOp(theano.gof.Op):
     """
     A Theano Op that implements the identity transform but also does an
     arbitrary (user-specified) side effect.
+
+    Parameters
+    ----------
+    callback : WRITEME
     """
     view_map = {0: [0]}
 
     def __init__(self, callback):
-        """
-        .. todo::
-
-            WRITEME
-        """
         self.callback = callback
 
     def make_node(self, xin):
@@ -512,8 +511,8 @@ def wraps(wrapped,
     Returns a decorator that invokes `update_wrapper()` with the decorated
     function as the wrapper argument and the arguments to `wraps()` as the
     remaining arguments. Default arguments are as for `update_wrapper()`.
-    This is a convenience function to simplify applying `partial()` to
-    `update_wrapper()`.
+    This is a convenience function to simplify applying
+    `functools.partial()` to `update_wrapper()`.
 
     Examples
     --------
